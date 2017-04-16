@@ -12,6 +12,7 @@ from collections import namedtuple
 
 from .utils import sjson_dumps
 from .execute import VkFunction
+from .exceptions import ApiError
 
 if sys.version_info.major == 2:
     range = xrange
@@ -132,9 +133,7 @@ class VkRequestsPool(object):
         return self.one_param['return']
 
     def execute(self):
-        for i in range(0, len(self.pool), 25):
-            cur_pool = self.pool[i:i + 25]
-
+        def execute_on_pool_part(cur_pool):
             one_method = check_one_method(cur_pool)
 
             if one_method:
@@ -155,6 +154,19 @@ class VkRequestsPool(object):
                     cur_pool[x].result.set_result(r)
                 else:
                     cur_pool[x].result.set_error(True)
+
+        def execute_on_pool_part_safely(cur_pool):
+            try:
+                execute_on_pool_part(cur_pool)
+            except ApiError as e:
+                if e.code == 13:
+                    middle_index = len(cur_pool) / 2
+                    execute_on_pool_part_safely(cur_pool[:middle_index])
+                    execute_on_pool_part_safely(cur_pool[middle_index:])
+
+        for i in range(0, len(self.pool), 25):
+            cur_pool = self.pool[i:i + 25]
+            execute_on_pool_part_safely(cur_pool)
 
     def execute_one_param(self):
         result = {}
