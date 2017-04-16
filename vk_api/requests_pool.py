@@ -160,7 +160,7 @@ class VkRequestsPool(object):
                 execute_on_pool_part(cur_pool)
             except ApiError as e:
                 if e.code == 13:
-                    middle_index = len(cur_pool) / 2
+                    middle_index = int(len(cur_pool) / 2)
                     execute_on_pool_part_safely(cur_pool[:middle_index])
                     execute_on_pool_part_safely(cur_pool[middle_index:])
 
